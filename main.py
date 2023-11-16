@@ -9,7 +9,29 @@ defaultPassword = ''
 botUsername = ''
 botPassword = ''
 
-def get_service_numbers(ip):
+class Service:
+    id = None
+    url = None
+    gps = None
+    
+    def __init__(self, id, url, gps):
+        self.id = id
+        self.url = url
+        self.gps = gps
+
+    # example url -> # https://panel.wave.com.pl/?co=alias&alias=U6688
+    def generate_url(self):
+        self.url = f"https://panel.wave.com.pl/?co=alias&alias={self.id}"
+    
+    def get_gps(self):
+        pass
+
+def get_service_IDs(ip):
+    # read credentials from files
+    with open('.venv/defaultpw.txt', 'r') as f:
+        defaultUsername, defaultPassword = f.read().splitlines()
+    with open('.venv/bot.txt', 'r') as f:
+        botUsername, botPassword = f.read().splitlines()
     # Start the ssh client that connects to the access point
     ssh = paramiko.SSHClient()
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -30,7 +52,6 @@ def get_service_numbers(ip):
     identified = []
     unidentified = []
     for name in radioNames:
-        print(name)
         if re.search(r'U[0-9]+', name):
             identified.append(re.findall(r'U[0-9]{1,}', name)[0])
         else:
@@ -38,17 +59,15 @@ def get_service_numbers(ip):
     # Return the identified and unidentified service numbers
     return {'id': identified, 'no-id': unidentified}
 
+if __name__ == '__main__':
+    clients = get_service_IDs('10.1.54.21')
+    serviceIDs = clients['id']
+    unidentified = clients['no-id']
+    Services = []
+    for serviceID in serviceIDs:
+        newService = Service(id=serviceID, url='', gps='')
+        newService.generate_url()
+        # newService.get_gps()
+        Services.append(newService)
 
-#example url -> # https://panel.wave.com.pl/?co=alias&alias=U6688
-# def generate_urls(clients):
-#     for service in clients['id']:
-#         url = f"https://panel.wave.com.pl/?co=alias&alias={service}"
-
-
-# read credentials from files
-with open('.venv/defaultpw.txt', 'r') as f:
-    defaultUsername, defaultPassword = f.read().splitlines()
-with open('.venv/bot.txt', 'r') as f:
-    botUsername, botPassword = f.read().splitlines()
-
-get_service_numbers('10.1.54.21')
+    #kml file etc.
