@@ -1,14 +1,18 @@
-import os
 import re
 import paramiko
 import csv
 import simplekml
+from scraper import find_service_gps
 
+
+# Credentials
 defaultUsername = ''
 defaultPassword = ''
 botUsername = ''
 botPassword = ''
 
+
+# Custom class for services
 class Service:
     id = None
     url = None
@@ -24,10 +28,12 @@ class Service:
         self.url = f"https://panel.wave.com.pl/?co=alias&alias={self.id}"
     
     def get_gps(self):
-        pass
+        self.gps = find_service_gps(self.id, self.url)
 
+
+# Get the list of wireless clients' radio names
 def get_service_IDs(ip):
-    # read credentials from files
+    # Read credentials from files
     with open('.venv/defaultpw.txt', 'r') as f:
         defaultUsername, defaultPassword = f.read().splitlines()
     with open('.venv/bot.txt', 'r') as f:
@@ -59,6 +65,7 @@ def get_service_IDs(ip):
     # Return the identified and unidentified service numbers
     return {'id': identified, 'no-id': unidentified}
 
+# for testing purposes
 if __name__ == '__main__':
     clients = get_service_IDs('10.1.54.21')
     serviceIDs = clients['id']
@@ -67,7 +74,11 @@ if __name__ == '__main__':
     for serviceID in serviceIDs:
         newService = Service(id=serviceID, url='', gps='')
         newService.generate_url()
-        # newService.get_gps()
+        newService.get_gps()
         Services.append(newService)
-
+    
+    for service in Services:
+        print(f"{service.id} -> {service.gps}")
+    
     #kml file etc.
+    
