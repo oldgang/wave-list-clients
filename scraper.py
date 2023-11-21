@@ -44,6 +44,23 @@ def open_url(url):
 
 def find_service_gps(id, url):
     driver = open_url(url)
-    # find the service id on site (it's located inside of an <a> element)
-    location = driver.find_element(By.XPATH, f"//div/a[@name='{id}']/preceding::span[@class='edytowalny-text-gps']")
-    return location.text
+    location = driver.find_element(By.XPATH, f"//div/a[@name='{id}']/preceding::span[@class='edytowalny-text-gps']").text
+    x, y = location.split(',')
+    height = '10' # arbitrary value of 10 meters
+    return (y, x, height)
+
+def find_AP_gps(ip):
+    octets = ip.split('.')
+    id = f"{octets[1]}-{octets[2]}"
+    url = f"https://panel.wave.com.pl/?co=alias&alias={id}"
+    driver = open_url(url)
+    locationSpan = driver.find_element(By.CLASS_NAME, "edytowalny-text-gps")
+    location = locationSpan.find_element(By.TAG_NAME, "a").text
+    height = driver.find_element(By.CLASS_NAME, "edytowalny-text-wysokosc").text
+    x, y = location.split(',')
+    if height in ('', '0'):
+        height = '15' # arbitrary value of 15 meters
+    return (y, x, height)
+
+if __name__ == "__main__":
+    print(find_AP_gps('10.1.54.21'))

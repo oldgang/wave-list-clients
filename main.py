@@ -2,7 +2,9 @@ import re
 import paramiko
 import csv
 import simplekml
-from scraper import find_service_gps
+import threading
+import os
+from scraper import find_service_gps, find_AP_gps
 
 
 # Credentials
@@ -67,18 +69,46 @@ def get_service_IDs(ip):
 
 # for testing purposes
 if __name__ == '__main__':
+    accessPointIP = '10.1.54.21'
     clients = get_service_IDs('10.1.54.21')
     serviceIDs = clients['id']
     unidentified = clients['no-id']
-    Services = []
+    services = []
     for serviceID in serviceIDs:
         newService = Service(id=serviceID, url='', gps='')
         newService.generate_url()
-        newService.get_gps()
-        Services.append(newService)
+        services.append(newService)
     
-    for service in Services:
-        print(f"{service.id} -> {service.gps}")
-    
-    #kml file etc.
-    
+    for service in services:
+        thread = threading.Thread(target=service.get_gps())
+        thread.start()
+        thread.join()
+
+    listServices = [[service.id, service.gps] for service in services]
+
+    accessPointGps = find_AP_gps(accessPointIP)
+    # Plot the data on the map
+    kml = simplekml.Kml()
+    # Plot the access point
+    apPoint = kml.newpoint(name='AP', coords=[accessPointGps])
+    print(f"AP: {accessPointGps}")
+    apPoint.style.iconstyle.icon.href = "http://maps.google.com/mapfiles/kml/paddle/N.png"
+    apPoint.altitudemode = simplekml.AltitudeMode.relativetoground
+    # Plot the clients on the map
+    for service in listServices:
+        clientPoint = kml.newpoint(name=service[0], coords=[service[1]])
+        print(f"client: {service[1]}")
+        clientPoint.altitudemode = simplekml.AltitudeMode.relativetoground
+        clientPoint.style.iconstyle.icon.href = "https://maps.google.com/mapfiles/kml/paddle/K.png"
+        clientPoint.style.iconstyle.color = simplekml.Color.green
+        # add lines between AP and clients
+        lin = kml.newlinestring(name=service[0])
+        lin.coords = [accessPointGps, service[1]]
+        lin.style.linestyle.color = simplekml.Color.red
+        lin.style.linestyle.width = 3
+        lin.altitudemode = simplekml.AltitudeMode.relativetoground
+
+    if os.path.exists("data.kmz"):
+        os.remove("data.kmz")
+
+    kml.save("data.kmz") 
