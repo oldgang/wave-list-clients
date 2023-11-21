@@ -100,7 +100,7 @@ if __name__ == '__main__':
         print(f"client: {service[1]}")
         clientPoint.altitudemode = simplekml.AltitudeMode.relativetoground
         clientPoint.style.iconstyle.icon.href = "https://maps.google.com/mapfiles/kml/paddle/K.png"
-        clientPoint.style.iconstyle.color = simplekml.Color.green
+        clientPoint.style.iconstyle.color = "ff00ff00"
         # add lines between AP and clients
         lin = kml.newlinestring(name=service[0])
         lin.coords = [accessPointGps, service[1]]
