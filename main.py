@@ -67,12 +67,42 @@ def get_service_IDs(ip):
     # Return the identified and unidentified service numbers
     return {'id': identified, 'no-id': unidentified}
 
+
+def create_kml(listOfServices, accessPointIP):
+    accessPointGps = find_AP_gps(accessPointIP)
+    # Plot the data on the map
+    kml = simplekml.Kml()
+    # Plot the access point on the map
+    apPoint = kml.newpoint(name='AP', coords=[accessPointGps])
+    apPoint.style.iconstyle.icon.href = "http://maps.google.com/mapfiles/kml/paddle/N.png"
+    apPoint.altitudemode = simplekml.AltitudeMode.relativetoground
+    # Plot the clients on the map
+    for service in listOfServices:
+        clientPoint = kml.newpoint(name=service[0], coords=[service[1]])
+        clientPoint.altitudemode = simplekml.AltitudeMode.relativetoground
+        clientPoint.style.iconstyle.icon.href = "https://maps.google.com/mapfiles/kml/paddle/K.png"
+        clientPoint.style.iconstyle.color = "ff00ff00"
+        # add lines between AP and clients
+        lin = kml.newlinestring(name=service[0])
+        lin.coords = [accessPointGps, service[1]]
+        lin.style.linestyle.color = simplekml.Color.red
+        lin.style.linestyle.width = 3
+        lin.altitudemode = simplekml.AltitudeMode.relativetoground
+    # Check if the file exists and delete it if it does
+    if os.path.exists("data.kmz"):
+        os.remove("data.kmz")
+    # Save kmz file
+    kml.save("data.kmz") 
+
 # for testing purposes
 if __name__ == '__main__':
     accessPointIP = '10.1.54.21'
     clients = get_service_IDs('10.1.54.21')
     serviceIDs = clients['id']
     unidentified = clients['no-id']
+    print('Unidentified services (not shown on map):')
+    print('\n'.join(unidentified))
+    
     services = []
     for serviceID in serviceIDs:
         newService = Service(id=serviceID, url='', gps='')
@@ -84,31 +114,5 @@ if __name__ == '__main__':
         thread.start()
         thread.join()
 
-    listServices = [[service.id, service.gps] for service in services]
-
-    accessPointGps = find_AP_gps(accessPointIP)
-    # Plot the data on the map
-    kml = simplekml.Kml()
-    # Plot the access point
-    apPoint = kml.newpoint(name='AP', coords=[accessPointGps])
-    print(f"AP: {accessPointGps}")
-    apPoint.style.iconstyle.icon.href = "http://maps.google.com/mapfiles/kml/paddle/N.png"
-    apPoint.altitudemode = simplekml.AltitudeMode.relativetoground
-    # Plot the clients on the map
-    for service in listServices:
-        clientPoint = kml.newpoint(name=service[0], coords=[service[1]])
-        print(f"client: {service[1]}")
-        clientPoint.altitudemode = simplekml.AltitudeMode.relativetoground
-        clientPoint.style.iconstyle.icon.href = "https://maps.google.com/mapfiles/kml/paddle/K.png"
-        clientPoint.style.iconstyle.color = "ff00ff00"
-        # add lines between AP and clients
-        lin = kml.newlinestring(name=service[0])
-        lin.coords = [accessPointGps, service[1]]
-        lin.style.linestyle.color = simplekml.Color.red
-        lin.style.linestyle.width = 3
-        lin.altitudemode = simplekml.AltitudeMode.relativetoground
-
-    if os.path.exists("data.kmz"):
-        os.remove("data.kmz")
-
-    kml.save("data.kmz") 
+    listOfServices = [[service.id, service.gps] for service in services]
+    create_kml(listOfServices, accessPointIP)
