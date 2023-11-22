@@ -5,8 +5,6 @@ from selenium.webdriver.common.by import By
 from selenium.common.exceptions import WebDriverException
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
 
 # webdriver init
 def driverInit():
@@ -46,9 +44,9 @@ def open_url(url):
 def find_service_gps(id, url):
     driver = open_url(url)
     location = driver.find_element(By.XPATH, f"//div/a[@name='{id}']/preceding::span[@class='edytowalny-text-gps']").text
-    x, y = location.split(',')
+    lat, lon = location.split(',')
     height = '10' # arbitrary value of 10 meters
-    return (y, x, height)
+    return (lon, lat, height)
 
 # find the gps coordinates of the access point
 def find_AP_gps(ip):
@@ -59,10 +57,10 @@ def find_AP_gps(ip):
     locationSpan = driver.find_element(By.CLASS_NAME, "edytowalny-text-gps")
     location = locationSpan.find_element(By.TAG_NAME, "a").text
     height = driver.find_element(By.CLASS_NAME, "edytowalny-text-wysokosc").text
-    x, y = location.split(',')
+    lat, lon = location.split(',')
     if height in ('', '0'):
         height = '15' # arbitrary value of 15 meters
-    return (y, x, height)
+    return (lon, lat, height)
 
 # for testing purposes
 if __name__ == "__main__":

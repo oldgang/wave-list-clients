@@ -4,6 +4,7 @@ import csv
 import simplekml
 import threading
 import os
+import folium
 from scraper import find_service_gps, find_AP_gps
 
 
@@ -14,6 +15,21 @@ botUsername = ''
 botPassword = ''
 
 
+# Custom class for access points
+class AccessPoint:
+    ip = None
+    gps = None
+    services = None
+    
+    def __init__(self, ip, gps, services):
+        self.ip = ip
+        self.gps = gps
+        self.services = services
+
+    # (lon, lat, height)
+    def get_gps(self):
+        self.gps = find_AP_gps(self.ip)
+    
 # Custom class for services
 class Service:
     id = None
@@ -29,6 +45,7 @@ class Service:
     def generate_url(self):
         self.url = f"https://panel.wave.com.pl/?co=alias&alias={self.id}"
     
+    # (lon, lat, height)
     def get_gps(self):
         self.gps = find_service_gps(self.id, self.url)
 
@@ -67,7 +84,7 @@ def get_service_IDs(ip):
     # Return the identified and unidentified service numbers
     return {'id': identified, 'no-id': unidentified}
 
-
+# Create a kml file with the data
 def create_kml(listOfServices, accessPointIP):
     accessPointGps = find_AP_gps(accessPointIP)
     # Plot the data on the map
@@ -94,15 +111,43 @@ def create_kml(listOfServices, accessPointIP):
     # Save kmz file
     kml.save("data.kmz") 
 
+# Create a folium map with the data
+def create_folium_map(listOfServices, accessPoint):
+    # Get the access point location
+    lon, lat, height = accessPoint.gps
+    apLocation = (float(lat), float(lon))
+    # Create the map
+    m = folium.Map(location=apLocation, zoom_start=10)
+    # Add the access point to the map
+    folium.Marker(location=apLocation, popup='AP', icon=folium.Icon(color='red')).add_to(m)
+    # Add the clients to the map
+    for service in listOfServices:
+        # Get the client location
+        lon, lat, height = service[1]
+        clientLocation = (float(lat), float(lon))
+        folium.Marker(location=clientLocation, popup=service[0], icon=folium.Icon(color='green')).add_to(m)
+        # Draw lines between each client and the access point
+        locations = [
+            apLocation,
+            clientLocation
+        ]
+        folium.PolyLine(locations=locations, color='red', weight=2.5, opacity=1).add_to(m)
+    # Save the map
+    m.save('map.html')
+    # Display the map
+    m
+
 # for testing purposes
 if __name__ == '__main__':
     accessPointIP = '10.1.54.21'
-    clients = get_service_IDs('10.1.54.21')
+    clients = get_service_IDs(accessPointIP)
     serviceIDs = clients['id']
     unidentified = clients['no-id']
-    print('Unidentified services (not shown on map):')
-    print('\n'.join(unidentified))
-    
+
+    if len(unidentified) > 0:
+        print('Unidentified services (not shown on map):')
+        print('\n'.join(unidentified))
+        
     services = []
     for serviceID in serviceIDs:
         newService = Service(id=serviceID, url='', gps='')
@@ -115,4 +160,9 @@ if __name__ == '__main__':
         thread.join()
 
     listOfServices = [[service.id, service.gps] for service in services]
-    create_kml(listOfServices, accessPointIP)
+
+    ap = AccessPoint(ip=accessPointIP, gps='', services=listOfServices)
+    ap.get_gps()
+    # print(ap.ip, ap.gps, ap.services)
+    # create_kml(listOfServices, accessPointIP)
+    create_folium_map(listOfServices, ap)
