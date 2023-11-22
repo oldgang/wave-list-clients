@@ -42,6 +42,7 @@ def open_url(url):
     driver.get(url)
     return driver
 
+# find the gps coordinates of the service
 def find_service_gps(id, url):
     driver = open_url(url)
     location = driver.find_element(By.XPATH, f"//div/a[@name='{id}']/preceding::span[@class='edytowalny-text-gps']").text
@@ -49,6 +50,7 @@ def find_service_gps(id, url):
     height = '10' # arbitrary value of 10 meters
     return (y, x, height)
 
+# find the gps coordinates of the access point
 def find_AP_gps(ip):
     octets = ip.split('.')
     id = f"{octets[1]}-{octets[2]}"
@@ -62,5 +64,6 @@ def find_AP_gps(ip):
         height = '15' # arbitrary value of 15 meters
     return (y, x, height)
 
+# for testing purposes
 if __name__ == "__main__":
     print(find_AP_gps('10.1.54.21'))
