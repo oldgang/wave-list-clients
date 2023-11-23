@@ -18,6 +18,7 @@ botPassword = ''
 # Custom class for access points
 class AccessPoint:
     ip = None
+    nodeID = None
     gps = None
     services = None
     
@@ -25,6 +26,7 @@ class AccessPoint:
         self.ip = ip
         self.gps = gps
         self.services = services
+        self.nodeID = f"{ip.split('.')[1]}-{ip.split('.')[2]}"
 
     # (lon, lat, height)
     def get_gps(self):
@@ -118,8 +120,29 @@ def create_folium_map(listOfServices, accessPoint):
     apLocation = (float(lat), float(lon))
     # Create the map
     m = folium.Map(location=apLocation, zoom_start=10)
+
+    # Add the satellite layer
+
+    # ESRI Satellite
+    # tile = folium.TileLayer(
+    #     tiles = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    #     attr = 'Esri',
+    #     name = 'Esri Satellite',
+    #     overlay = False,
+    #     control = True
+    #    ).add_to(m)
+    
+    # Google Satellite (Hybrid)
+    googleHybrid = folium.TileLayer('http://{s}.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}',
+         attr='googleHybrid',
+         name='Google Satellite',
+         subdomains=['mt0', 'mt1', 'mt2', 'mt3'],
+         overlay=True,
+         control=False                      
+        ).add_to(m)
+
     # Add the access point to the map
-    folium.Marker(location=apLocation, popup='AP', icon=folium.Icon(color='red')).add_to(m)
+    folium.Marker(location=apLocation, popup=accessPoint.nodeID, icon=folium.Icon(color='red')).add_to(m)
     # Add the clients to the map
     for service in listOfServices:
         # Get the client location
@@ -135,11 +158,11 @@ def create_folium_map(listOfServices, accessPoint):
     # Save the map
     m.save('map.html')
     # Display the map
-    m
+    # m
 
 # for testing purposes
 if __name__ == '__main__':
-    accessPointIP = '10.1.54.21'
+    accessPointIP = '10.1.115.26'
     clients = get_service_IDs(accessPointIP)
     serviceIDs = clients['id']
     unidentified = clients['no-id']
