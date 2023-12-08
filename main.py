@@ -5,8 +5,7 @@ import simplekml
 import threading
 import os
 import folium
-from scraper import find_service_gps, find_AP_gps
-
+from models import Service, AccessPoint
 
 # Credentials
 defaultUsername = ''
@@ -14,51 +13,18 @@ defaultPassword = ''
 botUsername = ''
 botPassword = ''
 
-
-# Custom class for access points
-class AccessPoint:
-    ip = None
-    nodeID = None
-    gps = None
-    services = None
-    
-    def __init__(self, ip, gps, services):
-        self.ip = ip
-        self.gps = gps
-        self.services = services
-        self.nodeID = f"{ip.split('.')[1]}-{ip.split('.')[2]}"
-
-    # (lon, lat, height)
-    def get_gps(self):
-        self.gps = find_AP_gps(self.ip)
-    
-# Custom class for services
-class Service:
-    id = None
-    url = None
-    gps = None
-    
-    def __init__(self, id, url, gps):
-        self.id = id
-        self.url = url
-        self.gps = gps
-
-    # example url -> # https://panel.wave.com.pl/?co=alias&alias=U6688
-    def generate_url(self):
-        self.url = f"https://panel.wave.com.pl/?co=alias&alias={self.id}"
-    
-    # (lon, lat, height)
-    def get_gps(self):
-        self.gps = find_service_gps(self.id, self.url)
-
+# Read credentials from file
+def read_credentials():
+    with open('.venv/credentials.txt', 'r') as f:
+        credentials = f.readlines()
+        global defaultUsername, defaultPassword, botUsername, botPassword
+        defaultUsername = credentials[0].strip()
+        defaultPassword = credentials[1].strip()
+        botUsername = credentials[2].strip()
+        botPassword = credentials[3].strip()
 
 # Get the list of wireless clients' radio names
 def get_service_IDs(ip):
-    # Read credentials from files
-    with open('.venv/defaultpw.txt', 'r') as f:
-        defaultUsername, defaultPassword = f.read().splitlines()
-    with open('.venv/bot.txt', 'r') as f:
-        botUsername, botPassword = f.read().splitlines()
     # Start the ssh client that connects to the access point
     ssh = paramiko.SSHClient()
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -87,8 +53,8 @@ def get_service_IDs(ip):
     return {'id': identified, 'no-id': unidentified}
 
 # Create a kml file with the data
-def create_kml(listOfServices, accessPointIP):
-    accessPointGps = find_AP_gps(accessPointIP)
+def create_kml(listOfServices, accessPoint):
+    accessPointGps = accessPoint.gps
     # Plot the data on the map
     kml = simplekml.Kml()
     # Plot the access point on the map
@@ -162,7 +128,8 @@ def create_folium_map(listOfServices, accessPoint):
 
 # for testing purposes
 if __name__ == '__main__':
-    accessPointIP = '10.1.115.26'
+    read_credentials()
+    accessPointIP = '10.1.13.24'
     clients = get_service_IDs(accessPointIP)
     serviceIDs = clients['id']
     unidentified = clients['no-id']
@@ -184,8 +151,7 @@ if __name__ == '__main__':
 
     listOfServices = [[service.id, service.gps] for service in services]
 
-    ap = AccessPoint(ip=accessPointIP, gps='', services=listOfServices)
-    ap.get_gps()
-    # print(ap.ip, ap.gps, ap.services)
-    # create_kml(listOfServices, accessPointIP)
-    create_folium_map(listOfServices, ap)
+    accessPoint = AccessPoint(ip=accessPointIP, gps='', services=listOfServices)
+    accessPoint.get_gps()
+    create_kml(listOfServices, accessPoint)
+    create_folium_map(listOfServices, accessPoint)
