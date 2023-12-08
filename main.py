@@ -53,13 +53,12 @@ def get_service_IDs(accessPoint):
     # Return the identified and unidentified service numbers
     return {'id': identified, 'no-id': unidentified}
 
-# Create a kml file with the data
-def create_kml(listOfServices, accessPoint):
+def add_to_kml(kml, accessPoint, lineColor):
     accessPointGps = accessPoint.gps
+    listOfServices = accessPoint.services
     # Plot the data on the map
-    kml = simplekml.Kml()
     # Plot the access point on the map
-    apPoint = kml.newpoint(name='AP', coords=[accessPointGps])
+    apPoint = kml.newpoint(name=accessPoint.ip, coords=[accessPointGps])
     apPoint.style.iconstyle.icon.href = "http://maps.google.com/mapfiles/kml/paddle/N.png"
     apPoint.altitudemode = simplekml.AltitudeMode.relativetoground
     # Plot the clients on the map
@@ -71,16 +70,13 @@ def create_kml(listOfServices, accessPoint):
         # add lines between AP and clients
         lin = kml.newlinestring(name=service[0])
         lin.coords = [accessPointGps, service[1]]
-        lin.style.linestyle.color = simplekml.Color.red
+        lin.style.linestyle.color = lineColor
         lin.style.linestyle.width = 3
         lin.altitudemode = simplekml.AltitudeMode.relativetoground
-    # Check if the file exists and delete it if it does
-    if os.path.exists("data.kmz"):
-        os.remove("data.kmz")
-    # Save kmz file
-    kml.save("data.kmz") 
+        lin.txt = accessPoint.ip + ' to ' + service[0]
+    return kml
 
-# Create a folium map with the data
+# Create a folium map with the data - currently not working
 def create_folium_map(listOfServices, accessPoint):
     # Get the access point location
     lon, lat, height = accessPoint.gps
@@ -127,18 +123,15 @@ def create_folium_map(listOfServices, accessPoint):
     # Display the map
     # m
 
-# for testing purposes
-if __name__ == '__main__':
-    read_credentials()
-    accessPoint = AccessPoint(ip='10.1.13.24')
+def get_access_point_data(accessPoint):
     clients = get_service_IDs(accessPoint)
-    
     services = []
+
     for serviceID in clients['id']:
         newService = Service(id=serviceID, url='', gps='')
         newService.generate_url()
         services.append(newService)
-    
+
     for service in services:
         thread = threading.Thread(target=service.get_gps())
         thread.start()
@@ -146,10 +139,29 @@ if __name__ == '__main__':
 
     identifiedServices = [[service.id, service.gps] for service in services]
     unidentifiedServices = clients['no-id']
-
     accessPoint.services = identifiedServices
     accessPoint.unidentifiedServices = unidentifiedServices
     accessPoint.get_gps()
 
-    create_kml(identifiedServices, accessPoint)
-    create_folium_map(identifiedServices, accessPoint)
+# for testing purposes
+if __name__ == '__main__':
+    read_credentials()
+    accessPoints = [
+                    # AccessPoint(ip='10.1.13.21'),
+                    AccessPoint(ip='10.1.13.24')
+                    ]
+    # Create a kml object
+    kml = simplekml.Kml()
+    # Random line colors
+    lineColors = ['ff0000ff', 'ff00ffff', 'ffff0000', 'ffff00ff', 'ffffff00', 'ff00ff00', 'ff000000']
+
+    # Get the data for each access point
+    for accessPoint in accessPoints:
+        get_access_point_data(accessPoint)
+        add_to_kml(kml, accessPoint, lineColors.pop())
+
+    # Check if the file exists and delete it if it does
+    if os.path.exists("data.kmz"):
+        os.remove("data.kmz")
+    # Save kmz file
+    kml.save("data.kmz") 
