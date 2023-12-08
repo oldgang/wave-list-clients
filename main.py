@@ -56,7 +56,6 @@ def get_service_IDs(accessPoint):
 def add_to_kml(kml, accessPoint, lineColor):
     accessPointGps = accessPoint.gps
     listOfServices = accessPoint.services
-    # Plot the data on the map
     # Plot the access point on the map
     apPoint = kml.newpoint(name=accessPoint.ip, coords=[accessPointGps])
     apPoint.style.iconstyle.icon.href = "http://maps.google.com/mapfiles/kml/paddle/N.png"
@@ -66,14 +65,14 @@ def add_to_kml(kml, accessPoint, lineColor):
         clientPoint = kml.newpoint(name=service[0], coords=[service[1]])
         clientPoint.altitudemode = simplekml.AltitudeMode.relativetoground
         clientPoint.style.iconstyle.icon.href = "https://maps.google.com/mapfiles/kml/paddle/K.png"
-        clientPoint.style.iconstyle.color = "ff00ff00"
+        clientPoint.style.iconstyle.color = lineColor
+        clientPoint.description = f"AP:{accessPoint.ip}\n{service.url}"
         # add lines between AP and clients
-        lin = kml.newlinestring(name=service[0])
+        lin = kml.newlinestring(name=f"{service[0]} <-> AP:{accessPoint.ip}")
         lin.coords = [accessPointGps, service[1]]
         lin.style.linestyle.color = lineColor
         lin.style.linestyle.width = 3
         lin.altitudemode = simplekml.AltitudeMode.relativetoground
-        lin.txt = accessPoint.ip + ' to ' + service[0]
     return kml
 
 # Create a folium map with the data - currently not working
@@ -82,20 +81,8 @@ def create_folium_map(listOfServices, accessPoint):
     lon, lat, height = accessPoint.gps
     apLocation = (float(lat), float(lon))
     # Create the map
-    m = folium.Map(location=apLocation, zoom_start=10)
-
-    # Add the satellite layer
-
-    # ESRI Satellite
-    # tile = folium.TileLayer(
-    #     tiles = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-    #     attr = 'Esri',
-    #     name = 'Esri Satellite',
-    #     overlay = False,
-    #     control = True
-    #    ).add_to(m)
-    
-    # Google Satellite (Hybrid)
+    m = folium.Map(location=apLocation, zoom_start=10) 
+    # Google Satellite (Hybrid) layer
     googleHybrid = folium.TileLayer('http://{s}.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}',
          attr='googleHybrid',
          name='Google Satellite',
@@ -103,7 +90,7 @@ def create_folium_map(listOfServices, accessPoint):
          overlay=True,
          control=False                      
         ).add_to(m)
-
+    
     # Add the access point to the map
     folium.Marker(location=apLocation, popup=accessPoint.nodeID, icon=folium.Icon(color='red')).add_to(m)
     # Add the clients to the map
@@ -123,42 +110,47 @@ def create_folium_map(listOfServices, accessPoint):
     # Display the map
     # m
 
-def get_access_point_data(accessPoint):
-    clients = get_service_IDs(accessPoint)
-    services = []
+def get_access_points_data(accessPoints):
+    if defaultUsername == '' or defaultPassword == '' or botUsername == '' or botPassword == '':
+        read_credentials()
 
-    for serviceID in clients['id']:
-        newService = Service(id=serviceID, url='', gps='')
-        newService.generate_url()
-        services.append(newService)
+    for accessPoint in accessPoints:
+        clients = get_service_IDs(accessPoint)
+        services = []
 
-    for service in services:
-        thread = threading.Thread(target=service.get_gps())
-        thread.start()
-        thread.join()
+        for serviceID in clients['id']:
+            newService = Service(id=serviceID, url='', gps='')
+            newService.generate_url()
+            services.append(newService)
 
-    identifiedServices = [[service.id, service.gps] for service in services]
-    unidentifiedServices = clients['no-id']
-    accessPoint.services = identifiedServices
-    accessPoint.unidentifiedServices = unidentifiedServices
-    accessPoint.get_gps()
+        for service in services:
+            thread = threading.Thread(target=service.get_gps())
+            thread.start()
+            thread.join()
+
+        identifiedServices = [[service.id, service.gps] for service in services]
+        unidentifiedServices = clients['no-id']
+        accessPoint.services = identifiedServices
+        accessPoint.unidentifiedServices = unidentifiedServices
+        accessPoint.get_gps()
 
 # for testing purposes
 if __name__ == '__main__':
-    read_credentials()
     accessPoints = [
-                    # AccessPoint(ip='10.1.13.21'),
-                    AccessPoint(ip='10.1.13.24')
+                    AccessPoint(ip='10.1.13.24'),
+                    AccessPoint(ip='10.1.13.21')
+                    # AccessPoint(ip='10.1.21.2'),
+                    # AccessPoint(ip='10.1.21.21')
                     ]
     # Create a kml object
     kml = simplekml.Kml()
+    # Get the data for all access points
+    get_access_points_data(accessPoints)
     # Random line colors
     lineColors = ['ff0000ff', 'ff00ffff', 'ffff0000', 'ffff00ff', 'ffffff00', 'ff00ff00', 'ff000000']
-
-    # Get the data for each access point
+    # Add the data to the kml object
     for accessPoint in accessPoints:
-        get_access_point_data(accessPoint)
-        add_to_kml(kml, accessPoint, lineColors.pop())
+        add_to_kml(kml, accessPoint, lineColors.pop(0))
 
     # Check if the file exists and delete it if it does
     if os.path.exists("data.kmz"):
