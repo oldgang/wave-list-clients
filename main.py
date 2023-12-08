@@ -24,7 +24,8 @@ def read_credentials():
         botPassword = credentials[3].strip()
 
 # Get the list of wireless clients' radio names
-def get_service_IDs(ip):
+def get_service_IDs(accessPoint):
+    ip = accessPoint.ip
     # Start the ssh client that connects to the access point
     ssh = paramiko.SSHClient()
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -129,17 +130,11 @@ def create_folium_map(listOfServices, accessPoint):
 # for testing purposes
 if __name__ == '__main__':
     read_credentials()
-    accessPointIP = '10.1.13.24'
-    clients = get_service_IDs(accessPointIP)
-    serviceIDs = clients['id']
-    unidentified = clients['no-id']
-
-    if len(unidentified) > 0:
-        print('Unidentified services (not shown on map):')
-        print('\n'.join(unidentified))
-        
+    accessPoint = AccessPoint(ip='10.1.13.24')
+    clients = get_service_IDs(accessPoint)
+    
     services = []
-    for serviceID in serviceIDs:
+    for serviceID in clients['id']:
         newService = Service(id=serviceID, url='', gps='')
         newService.generate_url()
         services.append(newService)
@@ -149,9 +144,12 @@ if __name__ == '__main__':
         thread.start()
         thread.join()
 
-    listOfServices = [[service.id, service.gps] for service in services]
+    identifiedServices = [[service.id, service.gps] for service in services]
+    unidentifiedServices = clients['no-id']
 
-    accessPoint = AccessPoint(ip=accessPointIP, gps='', services=listOfServices)
+    accessPoint.services = identifiedServices
+    accessPoint.unidentifiedServices = unidentifiedServices
     accessPoint.get_gps()
-    create_kml(listOfServices, accessPoint)
-    create_folium_map(listOfServices, accessPoint)
+
+    create_kml(identifiedServices, accessPoint)
+    create_folium_map(identifiedServices, accessPoint)

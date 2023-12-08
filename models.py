@@ -6,11 +6,10 @@ class AccessPoint:
     nodeID = None
     gps = None
     services = None
+    unidentifiedServices = None
     
-    def __init__(self, ip, gps, services):
+    def __init__(self, ip):
         self.ip = ip
-        self.gps = self.get_gps()
-        self.services = services
         self.nodeID = f"{ip.split('.')[1]}-{ip.split('.')[2]}"
 
     # coordinates format: (lon, lat, height)
